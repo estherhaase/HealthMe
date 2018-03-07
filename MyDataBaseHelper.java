@@ -21,7 +21,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
     private static MyDataBaseHelper sInstance;
     private static final String DATABASE_NAME = "wienerlinien.db";
-    private static final int DATABASE_VERSION = 16;
+    private static final int DATABASE_VERSION = 20;
     private static final String TABLE_STEIGE = "Steige";
     private static final String COL_RBL = "RBL";
     private static final String COL_LAT = "Latitude";
@@ -228,7 +228,9 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
         sqLiteDatabase.execSQL(CREATE_HALTESTELLEN_TABLE);
         sqLiteDatabase.execSQL(CREATE_STEIGE_TABLE);
+        sqLiteDatabase.execSQL(CREATE_KRANKENHAEUSER_TABLE);
         new GetStationInformationTask(MyDataBaseHelper.this).execute(WienerLinenApi.buildStaionDatabaseRequestUrl());
+        new GetHospitalInformationtask(MyDataBaseHelper.this).execute(WienerLinenApi.buildHospitalDatabaseRequestUrl());
 
 
     }
@@ -278,7 +280,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
     ArrayList<String> getAllHospitalNames(){
         SQLiteDatabase db = getReadableDatabase();
         ArrayList<String> list = new ArrayList<>();
-        Cursor res = db.rawQuery("SELECT " + COL_NAME + " FROM " + TABLE_KH,new String[]{});
+        Cursor res = db.rawQuery("SELECT " + COL_NAME + " FROM " + TABLE_KH, new String[]{});
         if(res.getCount() == 0){
             res.close();
             return null;
@@ -295,6 +297,33 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
             res.close();
 
         }return list;
+    }
+
+    Location getHospitalLocation(String name){
+
+        SQLiteDatabase db = getReadableDatabase();
+        Location location = new Location("");
+        String sql = "SELECT " + COL_LAT + ", " + COL_LON + " FROM " + TABLE_KH + " WHERE " + COL_NAME + " = ?";
+        Cursor res = db.rawQuery(sql, new String[]{name});
+        if(res.getCount() == 0){
+            res.close();
+            return null;
+
+        }else{
+
+            if(res.moveToFirst()) {
+                do {
+                    location.setLatitude(res.getDouble(0));
+                    location.setLongitude(res.getDouble(1));
+
+                }while (res.moveToNext());
+            }
+            res.close();
+
+        }return location;
+
+
+
     }
 
     ArrayList<Integer> getRBLs(int id) {

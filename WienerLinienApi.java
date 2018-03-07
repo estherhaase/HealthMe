@@ -30,7 +30,7 @@ class WienerLinenApi {
     private final static String NEARBY_STATIONS_PATH = "coordsDistance.php";
 
 
-    static URL buildWienerLinienMonitorUrl(ArrayList<Integer> rblNum){
+    static String buildWienerLinienMonitorUrl(ArrayList<Integer> rblNum){
 
         Uri monitorUri;
         Uri.Builder builder = new Uri.Builder();
@@ -56,7 +56,7 @@ class WienerLinenApi {
             e.printStackTrace();
         }
 
-        return url;
+        return url.toString();
     }
 
     static URL buildStaionDatabaseRequestUrl(){
