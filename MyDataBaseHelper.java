@@ -1,7 +1,10 @@
 package com.example.android.healthme;
 
+import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -21,7 +24,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
     private static MyDataBaseHelper sInstance;
     private static final String DATABASE_NAME = "wienerlinien.db";
-    private static final int DATABASE_VERSION = 20;
+    private static final int DATABASE_VERSION = 30;
     private static final String TABLE_STEIGE = "Steige";
     private static final String COL_RBL = "RBL";
     private static final String COL_LAT = "Latitude";
@@ -32,6 +35,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
     private static final String TABLE_KH = "Krankenhaeuser";
     private static final String COL_ADRESS = "Adresse";
     private static final String COL_BEZIRK = "Bezirk";
+
 
     private final String CREATE_STEIGE_TABLE = "CREATE TABLE " + TABLE_STEIGE
             + " (" + COL_RBL + " INTEGER, " + COL_LAT + " DOUBLE NOT NULL, "
@@ -46,6 +50,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
     static synchronized MyDataBaseHelper getsInstance(Context context){
         if(sInstance == null){
+
             sInstance = new MyDataBaseHelper(context.getApplicationContext());
         }
         return sInstance;
@@ -56,15 +61,24 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
     }
 
     @Override
-    public void onCreate(SQLiteDatabase db) {
+    public void onCreate(SQLiteDatabase db){
+
 
         db.execSQL(CREATE_HALTESTELLEN_TABLE);
         db.execSQL(CREATE_STEIGE_TABLE);
         db.execSQL(CREATE_KRANKENHAEUSER_TABLE);
+        MainActivity.makeAsyncTasks =1;
 
-        new GetStationInformationTask(MyDataBaseHelper.this).execute(WienerLinenApi.buildStaionDatabaseRequestUrl());
-        new GetHospitalInformationtask(MyDataBaseHelper.this).execute(WienerLinenApi.buildHospitalDatabaseRequestUrl());
+
+
+       // new MainActivity.GetStationInformationTask().execute(WienerLinenApi.buildStaionDatabaseRequestUrl());
+        // new GetHospitalInformationtask(MyDataBaseHelper.this).execute(WienerLinenApi.buildHospitalDatabaseRequestUrl());
     }
+
+
+
+
+
 
     static class GetStationInformationTask extends AsyncTask<URL, Void, String[]> {
 
@@ -73,6 +87,8 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
         GetStationInformationTask(MyDataBaseHelper context){
             myDBHelperWeakReference = new WeakReference<>(context);
         }
+
+
 
         @Override
         protected String[] doInBackground(URL... urls) {
@@ -165,7 +181,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
         }
     }
 
-    private void addHospital(String name, String address, int district, double lat, double lon){
+    void addHospital(String name, String address, int district, double lat, double lon){
 
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
@@ -188,7 +204,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
     }
 
-    private void addRbl(int rbl, double lat, double lon, int stationId){
+    void addRbl(int rbl, double lat, double lon, int stationId){
 
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
@@ -229,13 +245,13 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
         sqLiteDatabase.execSQL(CREATE_HALTESTELLEN_TABLE);
         sqLiteDatabase.execSQL(CREATE_STEIGE_TABLE);
         sqLiteDatabase.execSQL(CREATE_KRANKENHAEUSER_TABLE);
-        new GetStationInformationTask(MyDataBaseHelper.this).execute(WienerLinenApi.buildStaionDatabaseRequestUrl());
-        new GetHospitalInformationtask(MyDataBaseHelper.this).execute(WienerLinenApi.buildHospitalDatabaseRequestUrl());
-
+       // new GetStationInformationTask(MyDataBaseHelper.this).execute(WienerLinenApi.buildStaionDatabaseRequestUrl());
+        // new GetHospitalInformationtask(MyDataBaseHelper.this).execute(WienerLinenApi.buildHospitalDatabaseRequestUrl());
+        MainActivity.makeAsyncTasks = 1;
 
     }
 
-    private void addStation(int stationId, String name){
+    void addStation(int stationId, String name){
 
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
@@ -332,6 +348,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
         ArrayList<Integer> rbls = new ArrayList<>();
         String sql = "SELECT " + COL_RBL + " FROM "  + TABLE_STEIGE + " WHERE " + COL_HALTESTELLEN_ID + "  = ?";
         Cursor res = db.rawQuery(sql, new String[]{stringId});
+        int i = res.getCount();
 
         if(res.getCount() == 0){
             res.close();
@@ -378,6 +395,23 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
         boolean rBool = res.moveToFirst();
         res.close();
         return rBool;
+
+    }
+
+    boolean hospitalExists(String name){
+
+        SQLiteDatabase db = getReadableDatabase();
+        String sql = "SELECT * FROM " + TABLE_KH + " WHERE " + COL_NAME + " =? ";
+        Cursor res = db.rawQuery(sql, new String[]{name});
+
+        if(res.getCount() == 0) {
+            res.close();
+            return false;
+        }
+        else {
+            res.close();
+            return true;
+        }
 
     }
 

@@ -2,7 +2,6 @@ package com.example.android.healthme;
 
 import android.net.Uri;
 import android.support.annotation.Nullable;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -56,6 +55,7 @@ class WienerLinenApi {
             e.printStackTrace();
         }
 
+        assert url != null;
         return url.toString();
     }
 

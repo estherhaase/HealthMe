@@ -1,6 +1,5 @@
 package com.example.android.healthme;
 
-import android.content.ContentValues;
 import android.content.Context;
 
 import com.android.volley.Request;
