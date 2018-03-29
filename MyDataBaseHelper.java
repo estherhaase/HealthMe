@@ -11,6 +11,8 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.location.Location;
 import android.os.AsyncTask;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -24,7 +26,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
     private static MyDataBaseHelper sInstance;
     private static final String DATABASE_NAME = "wienerlinien.db";
-    private static final int DATABASE_VERSION = 30;
+    private static final int DATABASE_VERSION = 32;
     private static final String TABLE_STEIGE = "Steige";
     private static final String COL_RBL = "RBL";
     private static final String COL_LAT = "Latitude";
@@ -32,6 +34,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
     private static final String COL_HALTESTELLEN_ID = "Haltestellen_ID";
     private static final String TABLE_HALTESTELLEN = "Haltestellen";
     private static final String COL_NAME = "Name";
+    private static final String COL_DIVA = "DIVA";
     private static final String TABLE_KH = "Krankenhaeuser";
     private static final String COL_ADRESS = "Adresse";
     private static final String COL_BEZIRK = "Bezirk";
@@ -42,9 +45,12 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
             + COL_LON + " DOUBLE NOT NULL, "
             + COL_HALTESTELLEN_ID + " INTEGER NOT NULL, FOREIGN KEY (" + COL_HALTESTELLEN_ID + ") REFERENCES "
             + TABLE_HALTESTELLEN + " (" + COL_HALTESTELLEN_ID +")  )";
+
+
     private final String CREATE_HALTESTELLEN_TABLE = "CREATE TABLE " + TABLE_HALTESTELLEN
             + " (" + COL_HALTESTELLEN_ID + " INTEGER PRIMARY KEY NOT NULL, "
-            + COL_NAME + " TEXT)";
+            + COL_NAME + " TEXT, " + COL_DIVA + " INTEGER)";
+
     private final String CREATE_KRANKENHAEUSER_TABLE = "CREATE TABLE " + TABLE_KH + " (" + COL_NAME + " TEXT NOT NULL, " + COL_ADRESS + " TEXT, " + COL_BEZIRK + " INTEGER, " + COL_LAT + " DOUBLE NOT NULL, "
             + COL_LON + " DOUBLE NOT NULL)";
 
@@ -74,10 +80,6 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
        // new MainActivity.GetStationInformationTask().execute(WienerLinenApi.buildStaionDatabaseRequestUrl());
         // new GetHospitalInformationtask(MyDataBaseHelper.this).execute(WienerLinenApi.buildHospitalDatabaseRequestUrl());
     }
-
-
-
-
 
 
     static class GetStationInformationTask extends AsyncTask<URL, Void, String[]> {
@@ -112,7 +114,9 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
                 for (int i = 0; i < stations.length(); i++) {
                     int tempId = Integer.parseInt(stations.getJSONObject(i).getString("HALTESTELLEN_ID"));
                     String tempName = stations.getJSONObject(i).getString("NAME");
-                    myDBHelperWeakReference.get().addStation(tempId, tempName);
+                    int tempDiva = Integer.parseInt(stations.getJSONObject(i).getString("DIVA"));
+
+                    myDBHelperWeakReference.get().addStation(tempId, tempName, tempDiva);
                 }
 
                 for (int j = 0; j < rbls.length(); j++) {
@@ -251,7 +255,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
     }
 
-    void addStation(int stationId, String name){
+    void addStation(int stationId, String name, int diva){
 
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
@@ -260,6 +264,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
             ContentValues vals = new ContentValues();
             vals.put(COL_HALTESTELLEN_ID, stationId);
             vals.put(COL_NAME, name);
+            vals.put(COL_DIVA, diva);
 
             db.insert(TABLE_HALTESTELLEN, null, vals);
             db.setTransactionSuccessful();
@@ -342,6 +347,27 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
     }
 
+    LatLng getStationLocation(int id){
+        String stringId = Integer.toString(id);
+        SQLiteDatabase db = getReadableDatabase();
+        LatLng location;
+        String SQL = "SELECT " + COL_LAT + ", " + COL_LON + " FROM " + TABLE_STEIGE + " WHERE " + COL_HALTESTELLEN_ID + " = ?";
+        int r;
+        Cursor res = db.rawQuery(SQL, new String[]{stringId});
+        if (res.getCount() == 0) {
+            r = 0;
+            res.close();
+            return null;
+        }
+        else {
+            res.moveToFirst();
+            location = new LatLng(res.getDouble(0), res.getDouble(1));
+
+            res.close();
+        }
+        return location;
+    }
+
     ArrayList<Integer> getRBLs(int id) {
         SQLiteDatabase db = getReadableDatabase();
         String stringId = Integer.toString(id);
@@ -365,7 +391,26 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
 
     }
+    int getStationId(int diva){
 
+        SQLiteDatabase db = getReadableDatabase();
+        String stringDiva = Integer.toString(diva);
+        String SQL = "SELECT " + COL_HALTESTELLEN_ID + " FROM " + TABLE_HALTESTELLEN + " WHERE " + COL_DIVA + " = ?";
+        int r;
+        Cursor res = db.rawQuery(SQL, new String[]{stringDiva});
+        if (res.getCount() == 0) {
+            r = 0;
+            res.close();
+            return r;
+        }
+        else {
+            res.moveToFirst();
+            r = res.getInt(0);
+            res.close();
+        }
+        return r;
+
+    }
     int getStationId(String name){
 
         SQLiteDatabase db = getReadableDatabase();

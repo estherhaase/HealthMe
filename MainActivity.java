@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
@@ -52,8 +53,10 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
@@ -97,6 +100,7 @@ public class MainActivity extends AppCompatActivity
     static int makeAsyncTasks = 0;
     private FusedLocationProviderClient mFusedLocationClient;
     ArrayList<Marker> markerList, markerList2;
+    ArrayList<LatLng> routeRequestStationLocations;
     protected static final int REQUEST_CHECK_SETTINGS = 0x1;
 
 
@@ -120,6 +124,7 @@ public class MainActivity extends AppCompatActivity
         helper = MyDataBaseHelper.getsInstance(getApplicationContext());
         db = helper.getWritableDatabase();
         markerList = new ArrayList<>();
+        routeRequestStationLocations = new ArrayList<>();
 
         /** The VolleyControl class makes sure that there is always only one instance of itself and of the RequestQueue which handles the network requests (singleton class)
          * It is recommended so that the RequestQueue lasts for the lifetime of the app and that the same RequestQueue is used when the activity is destroyed and recreated (like screen rotation)
@@ -145,7 +150,7 @@ public class MainActivity extends AppCompatActivity
         if(isConnected()){
             if (makeAsyncTasks == 1) {
                 new GetHospitalInformationTask(MainActivity.this).execute(WienerLinenApi.buildHospitalDatabaseRequestUrl());
-                new GetStationInformationTask(MainActivity.this).execute(WienerLinenApi.buildStaionDatabaseRequestUrl());
+                new GetStationInformationTask(MainActivity.this).execute(WienerLinenApi.buildStationDatabaseRequestUrl());
             }
         }
         else {
@@ -273,6 +278,51 @@ public class MainActivity extends AppCompatActivity
      * it simply sends a String Request with the parameters Request Method, URL as a String and Listeners, that check for Response and Error
      * the String Response converted to a JSONObject, which is then parsed for the necessary information
      * **/
+    void buildNearbyStationsRequest(){
+
+        String url = WienerLinenApi.buildNearbyStationRequestUrl().toString();
+        final String lat = Double.toString(myLocation.getLatitude());
+        final String lon = Double.toString(myLocation.getLongitude());
+        final String radius = "200";
+
+        StringRequest getNearbyStationsRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+
+                try {
+                    JSONObject jsonResponse = new JSONObject(response);
+                    JSONArray stations = jsonResponse.getJSONArray("stations");
+                    for (int i = 0; i < stations.length(); i++) {
+                        rbls.add(stations.getJSONObject(i).getInt("RBL"));
+                    }
+                    makeRealTimeRequest(WienerLinenApi.buildWienerLinienMonitorUrl(rbls));
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+
+            }
+        }) {
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+
+                Map<String, String> params = new HashMap<>();
+                params.put("latitude", lat);
+                params.put("longitude", lon);
+                params.put("radius", radius);
+
+                return params;
+
+            }
+        };
+        queue.add(getNearbyStationsRequest);
+
+    }
 
     void makeRealTimeRequest(String url) {
 
@@ -444,7 +494,7 @@ public class MainActivity extends AppCompatActivity
             System.out.println("Permissions already granted!");
             mLocationManager = (LocationManager)
                     getSystemService(Context.LOCATION_SERVICE);
-            makeLocationRequest();
+             makeLocationRequest();
         }
 
     }
@@ -469,7 +519,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     void makeLocationRequest() {
-       checkPermission();
+            checkPermission();
             LocationRequest mLocationRequest = new LocationRequest();
             mLocationRequest.setInterval(10000);
             mLocationRequest.setFastestInterval(5000);
@@ -587,7 +637,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onLocationChanged(Location location) {
         if(myLocation != null){
-            float distance = 10.0f;
+            float distance = 0.0f;
             float realDistance = myLocation.distanceTo(location);
 
             if(getFragmentManager().findFragmentById(R.id.content_frame) != null){
@@ -613,51 +663,7 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-    void buildNearbyStationsRequest(){
 
-            String url = WienerLinenApi.buildNearbyStationRequestUrl().toString();
-            final String lat = Double.toString(myLocation.getLatitude());
-            final String lon = Double.toString(myLocation.getLongitude());
-            final String radius = "200";
-
-            StringRequest getNearbyStationsRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
-                @Override
-                public void onResponse(String response) {
-
-                    try {
-                        JSONObject jsonResponse = new JSONObject(response);
-                        JSONArray stations = jsonResponse.getJSONArray("stations");
-                        for (int i = 0; i < stations.length(); i++) {
-                            rbls.add(stations.getJSONObject(i).getInt("RBL"));
-                        }
-                        makeRealTimeRequest(WienerLinenApi.buildWienerLinienMonitorUrl(rbls));
-
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-
-                }
-            }, new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError error) {
-
-                }
-            }) {
-                @Override
-                protected Map<String, String> getParams() throws AuthFailureError {
-
-                    Map<String, String> params = new HashMap<>();
-                    params.put("latitude", lat);
-                    params.put("longitude", lon);
-                    params.put("radius", radius);
-
-                    return params;
-
-                }
-            };
-            queue.add(getNearbyStationsRequest);
-
-        }
 
 
     @Override
@@ -739,7 +745,8 @@ public class MainActivity extends AppCompatActivity
                 for (int i = 0; i < stations.length(); i++) {
                     int tempId = Integer.parseInt(stations.getJSONObject(i).getString("HALTESTELLEN_ID"));
                     String tempName = stations.getJSONObject(i).getString("NAME");
-                    myWeakReference.get().helper.addStation(tempId, tempName);
+                    int tempDiva = Integer.parseInt(stations.getJSONObject(i).getString("DIVA"));
+                    myWeakReference.get().helper.addStation(tempId, tempName, tempDiva);
                 }
 
                 for (int j = 0; j < rbls.length(); j++) {
@@ -832,14 +839,79 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onHospitalSelected(Location selected) {
+    public void onHospitalSelected(Location selected, String name) {
 
         getFragmentManager().beginTransaction().remove(getFragmentManager().findFragmentById(R.id.content_frame)).commit();
 
         mGoogleMap.clear();
         goToLocation(selected.getLatitude(), selected.getLongitude(), 18);
         mGoogleMap.addMarker(new MarkerOptions().position(new LatLng(selected.getLatitude(), selected.getLongitude())).icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_red_hospital)));
+        routeToSelectedHospitalRequest(myLocation, selected);
 
+
+    }
+
+    public void routeToSelectedHospitalRequest(final Location myLocation, final Location hospitalLocation){
+
+        String url = WienerLinenApi.buildRoutesRequest(myLocation, hospitalLocation).toString();
+        routeRequestStationLocations.clear();
+        StringRequest routeRequest = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+
+                try {
+                    JSONObject routeResponse = new JSONObject(response);
+                    JSONObject trip = routeResponse.getJSONArray("trips").getJSONObject(0);
+                    JSONArray legs = trip.getJSONObject("trip").getJSONArray("legs");
+
+
+                    for(int i = 0; i < legs.length() - 1; i++) {
+                        JSONObject point = legs.getJSONObject(i).getJSONArray("points").getJSONObject(1);
+                        JSONArray stopSeq = legs.getJSONObject(i).getJSONArray("stopSeq");
+
+                        for(int z = 0; z < stopSeq.length(); z++){
+                            int diva = stopSeq.getJSONObject(z).getJSONObject("ref").getInt("id");
+                            routeRequestStationLocations.add(helper.getStationLocation(helper.getStationId(diva)));
+                        }
+                      //  int diva = point.getJSONObject("ref").getInt("id");
+                        //routeRequestStationLocations.add(helper.getStationLocation(helper.getStationId(diva)));
+
+                    }
+                    drawPolyline(routeRequestStationLocations);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+
+            }
+        });
+        queue.add(routeRequest);
+
+    }
+
+    public void drawPolyline(ArrayList<LatLng> list){
+
+        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+
+
+
+        for(int i= 0; i < list.size() - 1; i++) {
+            LatLng lng = new LatLng(list.get(i).latitude, list.get(i).longitude);
+            LatLng lng1 = new LatLng(list.get(i+1).latitude, list.get(i+1).longitude);
+            mGoogleMap.addPolyline(new PolylineOptions().add(lng, lng1).color(getResources().getColor(R.color.logoBlue)));
+
+
+        }
+        builder.include(list.get(0));
+        builder.include(list.get(list.size()-1));
+        LatLngBounds bounds = builder.build();
+        int padding = 50; // offset from edges of the map in pixels
+        CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
+        mGoogleMap.moveCamera(cu);
 
     }
 

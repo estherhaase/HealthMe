@@ -1,12 +1,20 @@
 package com.example.android.healthme;
 
+import android.location.Location;
 import android.net.Uri;
 import android.support.annotation.Nullable;
+
+import com.android.volley.toolbox.StringRequest;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -16,6 +24,7 @@ class WienerLinenApi {
 
     private final static String WL_AUTHORITY = "www.wienerlinien.at";
     private final static String REALTIME_PATH = "ogd_realtime";
+    private final static String ROUTING_PATH = "ogd_routing";
     private final static String MONITOR_PATH = "monitor";
     private final static String RBL_PARAM = "rbl";
     private final static String TRAFFIC_INFO_PARAM = "activateTrafficInfo";
@@ -27,6 +36,20 @@ class WienerLinenApi {
     private final static String STATION_FILE_PATH = "QueryData.php";
     private final static String HOSPITAL_FILE_PATH = "getHospitals.php";
     private final static String NEARBY_STATIONS_PATH = "coordsDistance.php";
+    private final static String XML_TRIP_PATH = "XML_TRIP_REQUEST2";
+    private final static String ORIGIN__TYPE_PARAM = "type_origin";
+    private final static String ORIGIN__NAME_PARAM = "name_origin";
+    private final static String DESTIN_TYPE_PARAM = "type_destination";
+    private final static String DESTIN_NAME_PARAM = "name_destination";
+    private final static String TYPE_VALUE = "coord";
+    private final static String OUTPUT_PARAM = "outputFormat";
+    private final static String JSON_VALUE = "JSON";
+    private final static String ROUTING_BASE = "http://www.wienerlinien.at/ogd_routing/XML_TRIP_REQUEST2?outputFormat=JSON";
+    private final static String COLON = ":";
+    private static String encodedColon;
+
+
+
 
 
     static String buildWienerLinienMonitorUrl(ArrayList<Integer> rblNum){
@@ -59,7 +82,38 @@ class WienerLinenApi {
         return url.toString();
     }
 
-    static URL buildStaionDatabaseRequestUrl(){
+    static URL buildRoutesRequest(Location myLocation, Location destinationLocation) {
+
+        String originValue = Double.toString(myLocation.getLongitude()) + ":" + Double.toString(myLocation.getLatitude()) + ":WGS84";
+        String destValue = Double.toString(destinationLocation.getLongitude()) + ":" + Double.toString(destinationLocation.getLatitude()) + ":WGS84";
+
+        Uri routeUri;
+        Uri.Builder builder = new Uri.Builder();
+        builder.scheme("http")
+                .encodedAuthority(WL_AUTHORITY)
+                .appendEncodedPath(ROUTING_PATH)
+                .appendEncodedPath(XML_TRIP_PATH)
+                .appendQueryParameter(OUTPUT_PARAM, JSON_VALUE)
+                .appendQueryParameter(ORIGIN__TYPE_PARAM, TYPE_VALUE)
+                .appendQueryParameter(ORIGIN__NAME_PARAM, originValue)
+                .appendQueryParameter(DESTIN_TYPE_PARAM, TYPE_VALUE)
+                .appendQueryParameter(DESTIN_NAME_PARAM, destValue);
+
+        routeUri = builder.build();
+        String uriString = routeUri.toString();
+
+        URL url = null;
+        try {
+            url = new URL(uriString);
+        }catch (MalformedURLException e){
+            e.printStackTrace();
+        }
+        assert url != null;
+        return url;
+
+    }
+
+    static URL buildStationDatabaseRequestUrl(){
 
         Uri dbUri;
         Uri.Builder builder = new Uri.Builder();
