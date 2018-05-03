@@ -25,6 +25,7 @@ class GoogleMapsApi {
     private final static String MODE_VALUE = "walking";
 
 
+
     static String buildGoogleDirectionsUrl(Double originLat, Double originLon, Double destLat, Double destLon){
 
         Uri directionsUri;

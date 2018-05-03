@@ -26,7 +26,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
     private static MyDataBaseHelper sInstance;
     private static final String DATABASE_NAME = "wienerlinien.db";
-    private static final int DATABASE_VERSION = 32;
+    private static final int DATABASE_VERSION = 34;
     private static final String TABLE_STEIGE = "Steige";
     private static final String COL_RBL = "RBL";
     private static final String COL_LAT = "Latitude";
@@ -38,11 +38,14 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
     private static final String TABLE_KH = "Krankenhaeuser";
     private static final String COL_ADRESS = "Adresse";
     private static final String COL_BEZIRK = "Bezirk";
+    private static final String COL_STEIG = "Steig";
 
+
+    //TODO: adapt php file to write platform into SQLite
 
     private final String CREATE_STEIGE_TABLE = "CREATE TABLE " + TABLE_STEIGE
             + " (" + COL_RBL + " INTEGER, " + COL_LAT + " DOUBLE NOT NULL, "
-            + COL_LON + " DOUBLE NOT NULL, "
+            + COL_LON + " DOUBLE NOT NULL, " + COL_STEIG + " INTEGER, "
             + COL_HALTESTELLEN_ID + " INTEGER NOT NULL, FOREIGN KEY (" + COL_HALTESTELLEN_ID + ") REFERENCES "
             + TABLE_HALTESTELLEN + " (" + COL_HALTESTELLEN_ID +")  )";
 
@@ -51,7 +54,11 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
             + " (" + COL_HALTESTELLEN_ID + " INTEGER PRIMARY KEY NOT NULL, "
             + COL_NAME + " TEXT, " + COL_DIVA + " INTEGER)";
 
-    private final String CREATE_KRANKENHAEUSER_TABLE = "CREATE TABLE " + TABLE_KH + " (" + COL_NAME + " TEXT NOT NULL, " + COL_ADRESS + " TEXT, " + COL_BEZIRK + " INTEGER, " + COL_LAT + " DOUBLE NOT NULL, "
+    private final String CREATE_KRANKENHAEUSER_TABLE = "CREATE TABLE " + TABLE_KH
+            + " (" + COL_NAME + " TEXT NOT NULL, "
+            + COL_ADRESS + " TEXT, "
+            + COL_BEZIRK + " INTEGER, "
+            + COL_LAT + " DOUBLE NOT NULL, "
             + COL_LON + " DOUBLE NOT NULL)";
 
     static synchronized MyDataBaseHelper getsInstance(Context context){
@@ -75,114 +82,6 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
         db.execSQL(CREATE_KRANKENHAEUSER_TABLE);
         MainActivity.makeAsyncTasks =1;
 
-
-
-       // new MainActivity.GetStationInformationTask().execute(WienerLinenApi.buildStaionDatabaseRequestUrl());
-        // new GetHospitalInformationtask(MyDataBaseHelper.this).execute(WienerLinenApi.buildHospitalDatabaseRequestUrl());
-    }
-
-
-    static class GetStationInformationTask extends AsyncTask<URL, Void, String[]> {
-
-        WeakReference<MyDataBaseHelper> myDBHelperWeakReference;
-
-        GetStationInformationTask(MyDataBaseHelper context){
-            myDBHelperWeakReference = new WeakReference<>(context);
-        }
-
-
-
-        @Override
-        protected String[] doInBackground(URL... urls) {
-
-
-            String response;
-
-            try {
-                response = WienerLinenApi.getHttpResponse(urls[0]);
-
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
-
-            try {
-                JSONObject stationJSON = new JSONObject(response);
-                JSONArray rbls = stationJSON.getJSONArray("rbls");
-                JSONArray stations = stationJSON.getJSONArray("stations");
-
-                for (int i = 0; i < stations.length(); i++) {
-                    int tempId = Integer.parseInt(stations.getJSONObject(i).getString("HALTESTELLEN_ID"));
-                    String tempName = stations.getJSONObject(i).getString("NAME");
-                    int tempDiva = Integer.parseInt(stations.getJSONObject(i).getString("DIVA"));
-
-                    myDBHelperWeakReference.get().addStation(tempId, tempName, tempDiva);
-                }
-
-                for (int j = 0; j < rbls.length(); j++) {
-                    int rbl = Integer.parseInt(rbls.getJSONObject(j).getString("RBL_NUMMER"));
-                    double lat = Double.parseDouble(rbls.getJSONObject(j).getString("STEIG_WGS84_LAT"));
-                    double lon = Double.parseDouble(rbls.getJSONObject(j).getString("STEIG_WGS84_LON"));
-                    int tempId = Integer.parseInt(rbls.getJSONObject(j).getString("FK_HALTESTELLEN_ID"));
-
-                    myDBHelperWeakReference.get().addRbl(rbl, lat, lon, tempId);
-                }
-
-
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-
-            return new String[0];
-        }
-
-    }
-
-    static class GetHospitalInformationtask extends AsyncTask<URL, Void, String[]>{
-
-        WeakReference<MyDataBaseHelper> myDataBaseHelperWeakReference;
-
-        GetHospitalInformationtask(MyDataBaseHelper context){
-
-            myDataBaseHelperWeakReference = new WeakReference<>(context);
-        }
-
-        @Override
-        protected String[] doInBackground(URL... urls) {
-
-            String response;
-
-            try {
-                response = WienerLinenApi.getHttpResponse(urls[0]);
-
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
-            try {
-
-                JSONObject khJSON = new JSONObject(response);
-                JSONArray khArray = khJSON.getJSONArray("hospitals");
-
-                for( int i = 0; i<khArray.length(); i++){
-                    JSONObject temp = khArray.getJSONObject(i);
-
-                    String name = temp.getString("NAME");
-                    String adress = temp.getString("ADRESSE");
-                    int district = temp.getInt("BEZIRK");
-                    Double lat = temp.getDouble("WGS84_LAT");
-                    Double lon = temp.getDouble("WGS84_LON");
-
-                    myDataBaseHelperWeakReference.get().addHospital(name, adress, district, lat, lon);
-
-                }
-
-            } catch (JSONException e){
-                e.printStackTrace();
-            }
-
-            return new String[0];
-        }
     }
 
     void addHospital(String name, String address, int district, double lat, double lon){
@@ -208,7 +107,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
     }
 
-    void addRbl(int rbl, double lat, double lon, int stationId){
+    void addRbl(int rbl, double lat, double lon, int stationId, String platform){
 
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
@@ -219,6 +118,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
             vals.put(COL_LAT, lat);
             vals.put(COL_LON, lon);
             vals.put(COL_HALTESTELLEN_ID, stationId);
+            vals.put(COL_STEIG, platform);
 
 
             db.insert(TABLE_STEIGE  , null, vals);
@@ -391,6 +291,24 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
 
 
     }
+
+   int getSingleRBL(String platform, int id){
+        SQLiteDatabase db = getReadableDatabase();
+        String stringId = Integer.toString(id);
+        String sql = "SELECT " + COL_RBL + " FROM " + TABLE_STEIGE + " WHERE " + COL_HALTESTELLEN_ID + " =? AND " + COL_STEIG + " =? ";
+        Cursor res = db.rawQuery(sql, new String[] {stringId, platform});
+        int i = 0;
+        if(res.getCount() == 0){
+            res.close();
+            return 0;
+        }else {
+            if(res.moveToFirst()){
+                i = res.getInt(0);
+            }
+        }res.close();
+    return i;
+    }
+
     int getStationId(int diva){
 
         SQLiteDatabase db = getReadableDatabase();
@@ -411,6 +329,7 @@ public class MyDataBaseHelper extends SQLiteOpenHelper  {
         return r;
 
     }
+
     int getStationId(String name){
 
         SQLiteDatabase db = getReadableDatabase();

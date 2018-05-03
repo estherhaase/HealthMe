@@ -45,8 +45,6 @@ class WienerLinenApi {
     private final static String OUTPUT_PARAM = "outputFormat";
     private final static String JSON_VALUE = "JSON";
     private final static String ROUTING_BASE = "http://www.wienerlinien.at/ogd_routing/XML_TRIP_REQUEST2?outputFormat=JSON";
-    private final static String COLON = ":";
-    private static String encodedColon;
 
 
 

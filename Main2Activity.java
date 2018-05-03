@@ -40,7 +40,7 @@ public class Main2Activity extends AppCompatActivity {
                // intent.putExtra("resultOk", resultOK);
                 startActivity(intent);
             }
-        }, 3000);
+        }, 1500);
     }
 
     /*

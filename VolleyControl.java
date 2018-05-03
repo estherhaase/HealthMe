@@ -6,6 +6,11 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 
+import java.lang.ref.WeakReference;
+
+/** The VolleyControl class makes sure that there is always only one instance of itself and of the RequestQueue which handles the network requests (singleton class)
+ * It is recommended so that the RequestQueue lasts for the lifetime of the app and that the same RequestQueue is used when the activity is destroyed and recreated (like screen rotation)
+ * **/
 public class VolleyControl {
 
     private static VolleyControl mInstance;

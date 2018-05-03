@@ -28,9 +28,9 @@ public class StationActivity extends Fragment {
     MyDataBaseHelper helper;
     OnStationClickListener mCallback;
 
-    public interface OnStationClickListener {
-        void onStationSelected(ArrayList<Integer> rbls2);
-    }
+    /**
+     * populates dropdown list of autocompletetextview with station data from SQLite database
+     * sets onClickListener on OK button and checks input*/
 
     @Nullable
     @Override
@@ -68,6 +68,10 @@ public class StationActivity extends Fragment {
         });
 
         return view;
+    }
+
+    public interface OnStationClickListener {
+        void onStationSelected(ArrayList<Integer> rbls2);
     }
 
     @Override
